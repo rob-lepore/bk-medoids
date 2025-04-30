@@ -1,6 +1,6 @@
 from matplotlib import pyplot as plt
 import numpy as np
-from utils import distance, cosine_sim
+from utils import distance
 
 class Centroid:
   def __init__(self, position: list):

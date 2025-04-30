@@ -1,9 +1,9 @@
 import numpy as np
-from utils import Config, global_variance, corr, cosine_sim, submatrix_corr_score, cosine_distance, distance
+from utils import Config, distance
 from centroid import Centroid
 
 
-class BKmeans:
+class BKmedoids:
   def __init__(self, dataset: np.ndarray, k: int | tuple, config: dict):
     self.dataset = dataset
     self.k = k

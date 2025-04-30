@@ -1,13 +1,9 @@
-from bkmeans import BKmeans
-from centroid import Centroid
-from utils import gene_standardization, show_biclusters, show_history, show_parallel_coordinates, show_biclusters_together
-from utils import grid_search, corr, show_reordered
+from bkmedoids import BKmedoids
+from utils import gene_standardization, grid_search
+from graphics import show_biclusters, show_history, show_parallel_coordinates, show_biclusters_together, show_reordered
 import numpy as np
 from sklearn.datasets import make_checkerboard
-import matplotlib.pyplot as plt
 import time
-import seaborn as sns
-import pandas as pd
 
 if __name__ == "__main__":
     ds, rows, columns = make_checkerboard(
@@ -21,8 +17,6 @@ if __name__ == "__main__":
     # plt.matshow(ds, cmap=plt.cm.Blues)
     # plt.title("Dataset")
     # plt.show()
-    
-    
     
     configs = {
         "threshold": 1.e-3,
@@ -41,7 +35,7 @@ if __name__ == "__main__":
     }
     
     start = time.time()
-    scores, solutions = grid_search(ds, k=3, bk_config=configs, grid=grid, method = BKmeans)
+    scores, solutions = grid_search(ds, k=3, bk_config=configs, grid=grid, method = BKmedoids)
     best = solutions[np.argmin(scores)]
     
     orphan_rows = []
