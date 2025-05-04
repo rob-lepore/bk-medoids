@@ -2,25 +2,24 @@ from bkmedoids import BKmedoids
 from utils import gene_standardization, grid_search
 from graphics import show_biclusters, show_history, show_parallel_coordinates, show_biclusters_together, show_reordered
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 from sklearn.datasets import make_checkerboard
 import time
 
 if __name__ == "__main__":
     ds, rows, columns = make_checkerboard(
-        shape=(50,50), n_clusters=(7,5), noise=4, random_state=1, shuffle=True
+        shape=(100,100), n_clusters=(8,7), noise=2, random_state=1, shuffle=True
     )
     
-    # ds = pd.read_csv("./datasets/constant_data.tsv",index_col=0, sep = "\t").to_numpy()
-    
-    ds = gene_standardization(ds, only_pos=False)
-    
-    # plt.matshow(ds, cmap=plt.cm.Blues)
-    # plt.title("Dataset")
-    # plt.show()
+    ds = pd.read_csv("./datasets/additive_data.tsv",index_col=0, sep = "\t").to_numpy()
+    # noise = np.random.normal(loc=0, scale=0.2, size=ds.shape)
+    # ds = ds + noise
+    # ds = gene_standardization(ds, only_pos=False)
     
     configs = {
         "threshold": 1.e-3,
-        "max_it": 10,
+        "max_it": 20,
         "show_iterations": False,
         "row_exclusive": True,
         "column_exclusive": True,
@@ -28,20 +27,20 @@ if __name__ == "__main__":
     }
     
     grid = {
-        "seed": [0],#list(range(5)),
-        "outlier_threshold": [0.05],
-        "row_out_th": [0.7],
+        "seed": [0],# list(range(4)),
+        "outlier_threshold": [0.000001],
+        "row_out_th": [0.8],
         "col_out_th": [0.8]
     }
     
     start = time.time()
-    scores, solutions = grid_search(ds, k=3, bk_config=configs, grid=grid, method = BKmedoids)
+    scores, solutions = grid_search(ds, k=5, bk_config=configs, grid=grid, method = BKmedoids)
     best = solutions[np.argmin(scores)]
     
     orphan_rows = []
     for row in range(ds.shape[0]):
         orphan = True
-        for c in best.centroids:
+        for c in best.medoids:
             if row in c.bicluster["rows"]:
                 orphan = False
                 break
@@ -51,7 +50,7 @@ if __name__ == "__main__":
     orphan_cols = []
     for col in range(ds.shape[1]):
         orphan = True
-        for c in best.centroids:
+        for c in best.medoids:
             if col in c.bicluster["cols"]:
                 orphan = False
                 break
@@ -67,4 +66,11 @@ if __name__ == "__main__":
     show_parallel_coordinates(best, "imgs/parallel_coordinates.png")
     show_history(best, "imgs/history.png")
     show_reordered(ds, best, path = "imgs/biclusters_reordered.png")
+    
+    
+    fig, ax = plt.subplots()
+    im = ax.imshow(ds, cmap='viridis')
+    fig.colorbar(im, ax=ax)
+    ax.set_title("Dataset")
+    fig.savefig("imgs/original.png")
     

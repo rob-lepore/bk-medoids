@@ -10,7 +10,7 @@ def show_reordered(data, bk, path=None):
     row_indices = []
     col_indices = []
     bicluster_positions = []
-    for c in bk.centroids:
+    for c in bk.medoids:
         bicluster_positions.append((len(row_indices), len(col_indices), len(c.bicluster["rows"]), len(c.bicluster["cols"])))
         row_indices.extend(c.bicluster["rows"])
         col_indices.extend(c.bicluster["cols"])
@@ -22,7 +22,8 @@ def show_reordered(data, bk, path=None):
     reordered =  data[np.ix_(new_row_order, new_col_order)]
 
     fig, ax = plt.subplots()
-    ax.imshow(reordered, cmap='Blues')
+    im = ax.imshow(reordered, cmap='viridis')
+    fig.colorbar(im, ax=ax)
 
     for r_start, c_start, r_len, c_len in bicluster_positions:
         rect = patches.Rectangle(
@@ -46,6 +47,8 @@ def show_history(bk, path=None):
     plt.ylabel("score")
     plt.xlabel("iteration")
     plt.plot(scores)
+    ax = plt.gca()
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))  # Force integer ticks on x-axis
     if path is None:
         plt.show()
     else:
@@ -74,13 +77,13 @@ def show_biclusters_together(solution, path=None):
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot(111)
     m = np.zeros_like(solution.dataset)
-    for idx, c in enumerate(solution.centroids):
+    for idx, c in enumerate(solution.medoids):
         rows = c.bicluster["rows"]
         columns = c.bicluster["cols"]
         m[np.ix_(rows, columns)] = idx+1
     
     # Create a colormap: white for 0, then distinct colors for clusters
-    num_clusters = len(solution.centroids)
+    num_clusters = len(solution.medoids)
     base_cmap = plt.get_cmap('tab20', num_clusters)
     colors = ['white'] + [base_cmap(i) for i in range(num_clusters)]
     cmap = ListedColormap(colors)
@@ -105,7 +108,7 @@ def show_biclusters_together(solution, path=None):
     
 def show_parallel_coordinates(bk, path=None):
     
-    num_centroids = len(bk.centroids)
+    num_centroids = len(bk.medoids)
 
     # Create a figure with subplots
     fig, axes = plt.subplots(1, num_centroids, figsize=(num_centroids * 5, 3), sharey=True)
@@ -113,7 +116,7 @@ def show_parallel_coordinates(bk, path=None):
     if num_centroids == 1:  # Ensure axes is iterable when only one subplot
         axes = [axes]
 
-    for ax, c in zip(axes, bk.centroids):
+    for ax, c in zip(axes, bk.medoids):
         rows = c.bicluster["rows"]
         columns = c.bicluster["cols"]
         subset = bk.dataset[np.ix_(rows, columns)]
@@ -128,7 +131,7 @@ def show_parallel_coordinates(bk, path=None):
         ax.plot([columns.index(c.col)], subset[rows.index(c.row), columns.index(c.col)], marker='x', color='red')
 
         ax.set_xlabel('Column Index')
-        ax.set_title(f'Bicluster {bk.centroids.index(c)+1}')
+        ax.set_title(f'Bicluster {bk.medoids.index(c)+1}')
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         ax.set_ylim(np.min(bk.dataset),np.max(bk.dataset))
         ax.grid(True)
