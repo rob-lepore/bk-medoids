@@ -1,5 +1,5 @@
 import numpy as np
-from utils import Config, cosine_distance_vectorized, var_distance_vectorized
+from utils import Config, multiplicative_cosine_distance_vectorized, additive_cosine_distance_vectorized, var_distance_vectorized, combined_cosine_distance_vectorized
 from medoid import Medoid
 import time
 from scipy.stats import mode
@@ -19,7 +19,7 @@ class BKmedoids:
     self.it = 0
     self.velocity = [np.inf]*3
     
-    self.distance_func = cosine_distance_vectorized
+    self.distance_func = combined_cosine_distance_vectorized
   
   def get_closest_medoid(self):
     N, M = self.dataset.shape
@@ -112,21 +112,27 @@ class BKmedoids:
       closest_medoid = self.get_closest_medoid()
       
       # Enforce row and column exclusiveness
+      medoids_rows = [m.row for m in self.medoids]
       for i, row in enumerate(closest_medoid):
+        if i in medoids_rows:
+          continue
         valid = row[row != -1]
         if len(valid) > 0:
             assigned_medoid = mode(valid, keepdims=False).mode
             self.medoids[int(assigned_medoid)].bicluster["rows"].append(i)
-
+            
+      medoids_cols = [m.col for m in self.medoids]
       for j, col in enumerate(closest_medoid.T):
-          valid = col[col != -1]
-          if len(valid) > 0:
-              assigned_medoid = mode(valid, keepdims=False).mode
-              self.medoids[int(assigned_medoid)].bicluster["cols"].append(j)
+        if j in medoids_cols:
+          continue
+        valid = col[col != -1]
+        if len(valid) > 0:
+            assigned_medoid = mode(valid, keepdims=False).mode
+            self.medoids[int(assigned_medoid)].bicluster["cols"].append(j)
               
       # Remove outlier rows and columns
       for m in self.medoids:
-        # m.add(m.row, m.col)
+        m.add(m.row, m.col)
         m.remove_outliers(self.distance_func,self.params.outlier_threshold, self.params.row_out_th, self.params.col_out_th, self.dataset)
         
       # Update medoids

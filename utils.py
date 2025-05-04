@@ -122,9 +122,9 @@ def grid_search(dataset, k, bk_config, grid, method):
 #     Y = [1, v2[1] - v2[0] ]
 #     return 1 - np.dot(X,Y) / (np.linalg.norm(X) * np.linalg.norm(Y))
     
-def cosine_distance_vectorized(stacked):
-    delta1 = stacked[..., 0] - stacked[..., 1]  
-    delta2 = stacked[..., 2] - stacked[..., 3]  
+def additive_cosine_distance_vectorized(stacked):
+    delta1 = stacked[..., 1] - stacked[..., 0]  
+    delta2 = stacked[..., 3] - stacked[..., 2]  
     X = np.stack([np.ones_like(delta1), delta1], axis=-1) 
     Y = np.stack([np.ones_like(delta2), delta2], axis=-1)
     dot = np.sum(X * Y, axis=-1)
@@ -134,5 +134,20 @@ def cosine_distance_vectorized(stacked):
     cosine_dist = 1 - cosine_sim
     return cosine_dist
 
+def multiplicative_cosine_distance_vectorized(stacked):
+    X = np.stack([stacked[..., 1], stacked[..., 0]], axis=-1) 
+    Y = np.stack([stacked[..., 3], stacked[..., 2]], axis=-1) 
+    dot = np.sum(X * Y, axis=-1)
+    norm_X = np.linalg.norm(X, axis=-1)
+    norm_Y = np.linalg.norm(Y, axis=-1)
+    cosine_sim = dot / (norm_X * norm_Y + 1e-8)
+    cosine_dist = 1 - cosine_sim
+    return cosine_dist
+
 def var_distance_vectorized(stacked):
     return np.var(stacked, axis=-1)
+
+def combined_cosine_distance_vectorized(stacked):
+    additive = additive_cosine_distance_vectorized(stacked)
+    multiplicative = multiplicative_cosine_distance_vectorized(stacked)
+    return np.minimum(additive, multiplicative)

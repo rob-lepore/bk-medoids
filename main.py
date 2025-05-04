@@ -9,10 +9,10 @@ import time
 
 if __name__ == "__main__":
     ds, rows, columns = make_checkerboard(
-        shape=(100,100), n_clusters=(8,7), noise=2, random_state=1, shuffle=True
+        shape=(100,100), n_clusters=(15,10), noise=2, random_state=1, shuffle=True
     )
     
-    ds = pd.read_csv("./datasets/additive_data.tsv",index_col=0, sep = "\t").to_numpy()
+    # ds = pd.read_csv("./datasets/additive_data.tsv",index_col=0, sep = "\t").to_numpy()
     # noise = np.random.normal(loc=0, scale=0.2, size=ds.shape)
     # ds = ds + noise
     # ds = gene_standardization(ds, only_pos=False)
@@ -27,14 +27,14 @@ if __name__ == "__main__":
     }
     
     grid = {
-        "seed": [0],# list(range(4)),
-        "outlier_threshold": [0.000001],
-        "row_out_th": [0.8],
+        "seed": list(range(4)),
+        "outlier_threshold": [1e-0],
+        "row_out_th": [0.9],
         "col_out_th": [0.8]
     }
     
     start = time.time()
-    scores, solutions = grid_search(ds, k=5, bk_config=configs, grid=grid, method = BKmedoids)
+    scores, solutions = grid_search(ds, k=6, bk_config=configs, grid=grid, method = BKmedoids)
     best = solutions[np.argmin(scores)]
     
     orphan_rows = []

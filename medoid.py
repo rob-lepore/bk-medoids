@@ -1,6 +1,5 @@
 from matplotlib import pyplot as plt
 import numpy as np
-from utils import cosine_distance_vectorized
 
 class Medoid:
   def __init__(self, position: list):
@@ -53,29 +52,24 @@ class Medoid:
           return
         
         m, n = bicluster.shape
+        
+        a = bicluster
+        b = np.tile(bicluster[:, Mj][:, np.newaxis], (1, n)) 
+        c = np.tile(bicluster[Mi, :][np.newaxis, :], (m, 1))  
+        d = np.full((m, n), bicluster[Mi, Mj])               
 
-        # Vectorized computation of the 4-element inputs to distance()
-        a = bicluster  # shape (m, n)
-        b = np.tile(bicluster[:, Mj][:, np.newaxis], (1, n))  # (m, n)
-        c = np.tile(bicluster[Mi, :][np.newaxis, :], (m, 1))  # (m, n)
-        d = np.full((m, n), bicluster[Mi, Mj])               # (m, n)
+        stacked = np.stack([a, b, c, d], axis=-1) 
+        distances = distance_func(stacked)    
 
-        stacked = np.stack([a, b, c, d], axis=-1)  # shape (m, n, 4)
-        distances = distance_func(stacked)      # should return shape (m, n)
-
-        # Zero out the central row and column
         distances[Mi, :] = 0
         distances[:, Mj] = 0
 
-        # Outlier masks
         row_mask = (distances > out_threshold).sum(axis=1) > row_threshold_perc * n
         col_mask = (distances > out_threshold).sum(axis=0) > col_threshold_perc * m
 
-        # Filter rows and columns
         row_indices = np.where(row_mask)[0]
         col_indices = np.where(col_mask)[0]
 
-        # Update bicluster
         self.bicluster["rows"] = [rows[i] for i in range(m) if i not in row_indices]
         self.bicluster["cols"] = [cols[i] for i in range(n) if i not in col_indices]
 
