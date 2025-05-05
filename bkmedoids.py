@@ -54,39 +54,26 @@ class BKmedoids:
   
   def find_medoid(self, ds: np.ndarray):
     N, M = ds.shape
+    min_loss = float('inf')
+    best_i, best_j = 0, 0
 
-    rows = np.arange(N)
-    cols = np.arange(M)
-    Mi_all, Mj_all = np.meshgrid(rows, cols, indexing='ij')
-    Mi_all = Mi_all.ravel()  
-    Mj_all = Mj_all.ravel()  
+    for i in range(N):
+        for j in range(M):
+            # Prepare stacked tensor for current (i, j)
+            a = ds
+            b = np.tile(ds[:, j][:, np.newaxis], (1, M))
+            c = np.tile(ds[i, :][np.newaxis, :], (N, 1))
+            d = np.full((N, M), ds[i, j])
 
-    K = Mi_all.size
+            stacked = np.stack([a, b, c, d], axis=-1)
+            D = self.distance_func(stacked)
+            loss = D.sum()
 
-    a = ds[np.newaxis, :, :]
-    a = np.broadcast_to(a, (K, N, M))
-    
-    b = ds[:, Mj_all]                                       
-    b = b.T[:, :, np.newaxis]                               
-    b = np.broadcast_to(b, (K, N, M))
+            if loss < min_loss:
+                min_loss = loss
+                best_i, best_j = i, j
 
-    c = ds[Mi_all, :]                                       
-    c = c[:, np.newaxis, :]                                 
-    c = np.broadcast_to(c, (K, N, M))
-
-    d = ds[Mi_all, Mj_all]                                  
-    d = d[:, np.newaxis, np.newaxis]                       
-    d = np.broadcast_to(d, (K, N, M))
-
-    stacked = np.stack([a, b, c, d], axis=-1)
-
-    D = self.distance_func(stacked)
-
-    losses = D.sum(axis=(1, 2))
-
-    best_k   = np.argmin(losses)
-
-    return int(Mi_all[best_k]), int(Mj_all[best_k])
+    return best_i, best_j
     
   def is_over(self):
     velocity_time = 4
