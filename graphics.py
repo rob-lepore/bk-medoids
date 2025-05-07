@@ -108,7 +108,8 @@ def show_biclusters_together(solution, path=None):
     
 def show_parallel_coordinates(bk, path=None):
     
-    num_centroids = len(bk.medoids)
+    medoids = [m for m in bk.medoids if len(m.bicluster["rows"])>2 and len(m.bicluster["cols"])>2]
+    num_centroids = len(medoids)
 
     # Create a figure with subplots
     fig, axes = plt.subplots(1, num_centroids, figsize=(num_centroids * 5, 5), sharey=True)
@@ -116,9 +117,10 @@ def show_parallel_coordinates(bk, path=None):
     if num_centroids == 1:  # Ensure axes is iterable when only one subplot
         axes = [axes]
 
-    for ax, c in zip(axes, bk.medoids):
+    for ax, c in zip(axes, medoids):
         rows = c.bicluster["rows"]
         columns = c.bicluster["cols"]
+        
         subset = bk.dataset[np.ix_(rows, columns)]
         
         if subset.shape[1] != len(columns):
@@ -131,7 +133,7 @@ def show_parallel_coordinates(bk, path=None):
         ax.plot([columns.index(c.col)], subset[rows.index(c.row), columns.index(c.col)], marker='x', color='red')
 
         ax.set_xlabel('Column Index')
-        ax.set_title(f'Bicluster {bk.medoids.index(c)+1} ({len(c.bicluster["rows"])}x{len(c.bicluster["cols"])})')
+        ax.set_title(f'Bicluster {bk.medoids.index(c)} ({len(c.bicluster["rows"])}x{len(c.bicluster["cols"])})')
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         ax.set_ylim(np.min(bk.dataset),np.max(bk.dataset))
         ax.grid(True)

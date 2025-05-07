@@ -1,5 +1,6 @@
 import numpy as np
-from utils import Config, multiplicative_cosine_distance_vectorized, additive_cosine_distance_vectorized, var_distance_vectorized, combined_cosine_distance_vectorized
+from utils import Config
+from utils import var_distance_vectorized, exp_shift_vectorized, exp_scale_vectorized, exp_combined_vectorized
 from medoid import Medoid
 import time
 from scipy.stats import mode
@@ -19,7 +20,7 @@ class BKmedoids:
     self.it = 0
     self.velocity = [np.inf]*3
     
-    self.distance_func = combined_cosine_distance_vectorized
+    self.distance_func = exp_combined_vectorized
   
   def get_closest_medoid(self):
     N, M = self.dataset.shape
@@ -116,6 +117,8 @@ class BKmedoids:
         if len(valid) > 0:
             assigned_medoid = mode(valid, keepdims=False).mode
             self.medoids[int(assigned_medoid)].bicluster["cols"].append(j)
+            # for med in np.unique(valid):
+            #   self.medoids[int(med)].bicluster["cols"].append(j)
               
       # Remove outlier rows and columns
       for m in self.medoids:
@@ -127,7 +130,7 @@ class BKmedoids:
         rows = m.bicluster["rows"]
         cols = m.bicluster["cols"]
 
-        if m.size() <= 1: 
+        if len(rows) <= 1 or len(cols) <= 1 : 
           random_row = self.rng.choice(self.dataset.shape[0])
           random_col = self.rng.choice(self.dataset.shape[1])
           updated_position = (random_row, random_col)

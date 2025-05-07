@@ -8,33 +8,30 @@ from sklearn.datasets import make_checkerboard
 import time
 
 if __name__ == "__main__":
-    ds, rows, columns = make_checkerboard(
-        shape=(100,100), n_clusters=(15,10), noise=2, random_state=1, shuffle=True
-    )
-    
-    # ds = pd.read_csv("./datasets/additive_data.tsv",index_col=0, sep = "\t").to_numpy()
-    # noise = np.random.normal(loc=0, scale=0.2, size=ds.shape)
-    # ds = ds + noise
+    # ds, rows, columns = make_checkerboard(
+    #     shape=(500,500), n_clusters=(30,25), noise=2, random_state=1, shuffle=True
+    # )
     # ds = gene_standardization(ds, only_pos=False)
+    
+    ds = pd.read_csv("./datasets/all_data.tsv",index_col=0, sep = "\t").to_numpy()
+    # ds = ds + np.random.normal(loc=0, scale=0.1, size=ds.shape)
     
     configs = {
         "threshold": 1.e-3,
         "max_it": 20,
         "show_iterations": False,
-        "row_exclusive": True,
-        "column_exclusive": True,
         #"outlier_threshold": 0.9,
     }
     
     grid = {
-        "seed": list(range(4)),
-        "outlier_threshold": [1e-0],
+        "seed": list(range(1)),
+        "outlier_threshold": [1e-3],
         "row_out_th": [0.9],
-        "col_out_th": [0.8]
+        "col_out_th": [0.7]
     }
     
     start = time.time()
-    scores, solutions = grid_search(ds, k=6, bk_config=configs, grid=grid, method = BKmedoids)
+    scores, solutions = grid_search(ds, k=10, bk_config=configs, grid=grid, method = BKmedoids)
     best = solutions[np.argmin(scores)]
     
     orphan_rows = []
@@ -66,6 +63,16 @@ if __name__ == "__main__":
     show_parallel_coordinates(best, "imgs/parallel_coordinates.png")
     show_history(best, "imgs/history.png")
     show_reordered(ds, best, path = "imgs/biclusters_reordered.png")
+    
+    with open("imgs/output.txt", "w") as file:
+        for idx, m in enumerate(best.medoids):
+            rows = m.bicluster["rows"]
+            cols = m.bicluster["cols"]
+            file.write(f"Bicluster {idx}: {len(rows)}x{len(cols)} -- {[ds[m.row, m.col]]}\n")
+            file.write(f"Rows: {rows}\n")
+            file.write(f"Cols: {cols}\n")
+            
+        
     
     
     fig, ax = plt.subplots()
