@@ -46,11 +46,11 @@ class BKmedoids:
     d_broadcast = np.broadcast_to(d, (K, N, M))
 
     stacked = np.stack([a_broadcast, b_broadcast, c_broadcast, d_broadcast], axis=-1) 
-    distances = self.distance_func(stacked) 
+    distances = self.distance_func(stacked, *self.params.distance_func_args) 
 
     min_index = np.argmin(distances, axis=0)  
     min_values = np.min(distances, axis=0)  
-    min_index[min_values >= self.params.outlier_threshold] = -1
+    min_index[min_values >= self.params.distance_threshold] = -1
     return min_index
   
   def find_medoid(self, ds: np.ndarray):
@@ -107,7 +107,7 @@ class BKmedoids:
         valid = row[row != -1]
         if len(valid) > 0:
             assigned_medoid = mode(valid, keepdims=False).mode
-            self.medoids[int(assigned_medoid)].bicluster["rows"].append(i)
+            self.medoids[int(assigned_medoid)].add_row(i)
             
       medoids_cols = [m.col for m in self.medoids]
       for j, col in enumerate(closest_medoid.T):
@@ -116,14 +116,14 @@ class BKmedoids:
         valid = col[col != -1]
         if len(valid) > 0:
             assigned_medoid = mode(valid, keepdims=False).mode
-            self.medoids[int(assigned_medoid)].bicluster["cols"].append(j)
+            self.medoids[int(assigned_medoid)].add_column(j)
             # for med in np.unique(valid):
-            #   self.medoids[int(med)].bicluster["cols"].append(j)
+            #   self.medoids[int(med)].add_column(j)
               
       # Remove outlier rows and columns
       for m in self.medoids:
         m.add(m.row, m.col)
-        m.remove_outliers(self.distance_func,self.params.outlier_threshold, self.params.row_out_th, self.params.col_out_th, self.dataset)
+        m.remove_outliers(self.distance_func, self.params.distance_func_args, self.params.distance_threshold, self.params.outlier_threshold, self.dataset)
         
       # Update medoids
       for m in self.medoids:
@@ -140,7 +140,6 @@ class BKmedoids:
           updated_position = rows[i], cols[j]
         
         m.update(updated_position)
-        m.add(m.row, m.col)
           
       if self.params.show_iterations:
           print([f"Medoid {i}: {m.position}" for i, m in enumerate(self.medoids)])
@@ -153,13 +152,14 @@ class BKmedoids:
   def evaluate_solution(self):    
     score = 0.0
     tot_size = 0
+    empties = 0
 
     for m in self.medoids:
         rows = np.asarray(m.bicluster["rows"])
         cols = np.asarray(m.bicluster["cols"])
 
         if len(rows) <= 1 or len(cols) <= 1:
-            score += 10
+            empties += 1
             continue
 
         ii, jj = np.meshgrid(rows, cols, indexing='ij')
@@ -170,9 +170,9 @@ class BKmedoids:
         d = self.dataset[m.row, m.col] * np.ones_like(a) 
 
         stacked = np.stack([a, b, c, d], axis=-1)         
-        dists = self.distance_func(stacked)                  
+        dists = self.distance_func(stacked, *self.params.distance_func_args)                  
 
-        score += np.mean(dists) * m.size()
+        score += np.sum(dists) * m.size()
         tot_size += m.size()
 
-    return score / tot_size if tot_size > 0 else np.inf
+    return (score / tot_size) + empties*10 if tot_size > 0 else np.inf

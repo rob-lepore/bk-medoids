@@ -9,6 +9,16 @@ class Medoid:
     self.bicluster = {"rows": [], "cols": []}
     self.points = []
     
+  def add_row(self, row):
+    if row not in self.bicluster["rows"]:
+      self.bicluster["rows"].append(row)
+      self.bicluster["rows"].sort()
+      
+  def add_column(self, col):
+    if col not in self.bicluster["cols"]:
+      self.bicluster["cols"].append(col) 
+      self.bicluster["cols"].sort() 
+    
   def add(self, row, col):
     self.points.append((row,col))
     if row not in self.bicluster["rows"]:
@@ -34,7 +44,7 @@ class Medoid:
   def __repr__(self) -> str:
     return self.__str__()
     
-  def remove_outliers(self, distance_func, out_threshold, row_threshold_perc, col_threshold_perc, dataset):
+  def remove_outliers(self, distance_func, distance_func_args, distance_threshold, threshold_perc, dataset):
     if len(self.bicluster["rows"]) <= 1 or len(self.bicluster["cols"]) <= 1:
         return
     
@@ -45,27 +55,25 @@ class Medoid:
             break
 
         bicluster = dataset[np.ix_(rows, cols)]
-        try:
-          Mi = rows.index(self.position[0])
-          Mj = cols.index(self.position[1])
-        except ValueError:
-          return
-        
+       
+        Mi = rows.index(self.position[0])
+        Mj = cols.index(self.position[1])
+                
         m, n = bicluster.shape
         
         a = bicluster
         b = np.tile(bicluster[:, Mj][:, np.newaxis], (1, n)) 
         c = np.tile(bicluster[Mi, :][np.newaxis, :], (m, 1))  
-        d = np.full((m, n), bicluster[Mi, Mj])               
+        d = np.full((m, n), bicluster[Mi, Mj])
 
         stacked = np.stack([a, b, c, d], axis=-1) 
-        distances = distance_func(stacked)    
+        distances = distance_func(stacked, *distance_func_args)    
 
         distances[Mi, :] = 0
         distances[:, Mj] = 0
 
-        row_mask = (distances > out_threshold).sum(axis=1) > row_threshold_perc * n
-        col_mask = (distances > out_threshold).sum(axis=0) > col_threshold_perc * m
+        row_mask = (distances > distance_threshold).sum(axis=1) > threshold_perc * n
+        col_mask = (distances > distance_threshold).sum(axis=0) > threshold_perc * m
 
         row_indices = np.where(row_mask)[0]
         col_indices = np.where(col_mask)[0]

@@ -17,17 +17,17 @@ if __name__ == "__main__":
     # ds = ds + np.random.normal(loc=0, scale=0.1, size=ds.shape)
     
     configs = {
-        "threshold": 1.e-3,
-        "max_it": 20,
+        "threshold": -1.e-3,
+        "max_it": 40,
         "show_iterations": False,
         #"outlier_threshold": 0.9,
     }
     
     grid = {
-        "seed": list(range(1)),
-        "outlier_threshold": [1e-3],
-        "row_out_th": [0.9],
-        "col_out_th": [0.7]
+        "seed": list(range(1,2)),
+        "distance_threshold": [1e-4],
+        "outlier_threshold": [0.8],
+        "distance_func_args": [[2]]
     }
     
     start = time.time()

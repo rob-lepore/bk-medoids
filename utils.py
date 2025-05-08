@@ -154,22 +154,20 @@ def combined_cosine_distance_vectorized(stacked):
     multiplicative = multiplicative_cosine_distance_vectorized(stacked)
     return np.minimum(additive, multiplicative)
 
-def exp_shift_vectorized(stacked):
+def exp_shift_vectorized(stacked, a = 2):
     delta1 = stacked[..., 1] - stacked[..., 0]  
     delta2 = stacked[..., 3] - stacked[..., 2]  
     diff = delta1-delta2
-    a = 2
     return 1-np.exp(-np.abs(diff)/a)
 
-def exp_scale_vectorized(stacked):
+def exp_scale_vectorized(stacked, a = 2):
     delta1 = stacked[..., 1] / (stacked[..., 0]  + 1e-10)
     delta2 = stacked[..., 3] / (stacked[..., 2]  + 1e-10)
     # with log-ratio?
     diff = delta1-delta2
-    a = 2
     return 1-np.exp(-np.abs(diff)/a)
 
-def exp_combined_vectorized(stacked):
-    shift = exp_shift_vectorized(stacked)
-    scale = exp_scale_vectorized(stacked)
+def exp_combined_vectorized(stacked, a = 4):
+    shift = exp_shift_vectorized(stacked, a)
+    scale = exp_scale_vectorized(stacked, a)
     return np.minimum(shift, scale)
