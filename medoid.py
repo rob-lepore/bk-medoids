@@ -71,7 +71,7 @@ class Medoid:
 
         distances[Mi, :] = 0
         distances[:, Mj] = 0
-
+        
         row_mask = (distances > distance_threshold).sum(axis=1) > threshold_perc * n
         col_mask = (distances > distance_threshold).sum(axis=0) > threshold_perc * m
 

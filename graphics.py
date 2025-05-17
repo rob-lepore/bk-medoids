@@ -3,9 +3,10 @@ from matplotlib.colors import BoundaryNorm, ListedColormap
 from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as plt
 import numpy as np
+from utils import acv
 
 
-def show_reordered(data, bk, path=None):
+def show_reordered(bk, path=None):
     
     row_indices = []
     col_indices = []
@@ -14,12 +15,12 @@ def show_reordered(data, bk, path=None):
         bicluster_positions.append((len(row_indices), len(col_indices), len(c.bicluster["rows"]), len(c.bicluster["cols"])))
         row_indices.extend(c.bicluster["rows"])
         col_indices.extend(c.bicluster["cols"])
-    remaining_rows = [i for i in range(data.shape[0]) if i not in row_indices]
-    remaining_cols = [j for j in range(data.shape[1]) if j not in col_indices]
+    remaining_rows = [i for i in range(bk.dataset.shape[0]) if i not in row_indices]
+    remaining_cols = [j for j in range(bk.dataset.shape[1]) if j not in col_indices]
     new_row_order = row_indices + remaining_rows
     new_col_order = col_indices + remaining_cols
 
-    reordered =  data[np.ix_(new_row_order, new_col_order)]
+    reordered =  bk.dataset[np.ix_(new_row_order, new_col_order)]
 
     fig, ax = plt.subplots()
     im = ax.imshow(reordered, cmap='viridis')
@@ -133,7 +134,7 @@ def show_parallel_coordinates(bk, path=None):
         ax.plot([columns.index(c.col)], subset[rows.index(c.row), columns.index(c.col)], marker='x', color='red')
 
         ax.set_xlabel('Column Index')
-        ax.set_title(f'Bicluster {bk.medoids.index(c)} ({len(c.bicluster["rows"])}x{len(c.bicluster["cols"])})')
+        ax.set_title(f'Bicluster {bk.medoids.index(c)} ({len(c.bicluster["rows"])}x{len(c.bicluster["cols"])}, ACV={acv(subset):.3f})')
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         ax.set_ylim(np.min(bk.dataset),np.max(bk.dataset))
         ax.grid(True)
