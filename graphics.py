@@ -142,6 +142,8 @@ def show_parallel_coordinates(bk, path=None):
     # Set shared y-axis limits
     axes[0].set_ylabel('Value')
     axes[0].set_ylim(bk.dataset.min(), bk.dataset.max())
+    
+    fig.tight_layout()
 
     if path is None:
         plt.show()

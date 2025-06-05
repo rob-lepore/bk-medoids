@@ -1,9 +1,7 @@
 import numpy as np
 from medoid import Medoid
-import time
 from scipy.stats import mode
 from utils import *
-from scipy.stats import pearsonr
 
 
 class BKmedoids:
@@ -18,9 +16,11 @@ class BKmedoids:
     self.rng = np.random.RandomState(self.params.seed)
     self.medoids = []
     self.it = 0
-    self.velocity = [np.inf]*3
     
-    self.distance_func = linear_scale_vectorized
+    if self.params.distance_func == "shift":
+      self.distance_func = linear_shift_vectorized
+    elif self.params.distance_func == "scale":
+      self.distance_func = linear_scale_vectorized
   
   def get_closest_medoid(self):
     N, M = self.dataset.shape
@@ -50,6 +50,7 @@ class BKmedoids:
 
     min_index = np.argmin(distances, axis=0)  
     min_values = np.min(distances, axis=0)  
+    # print(min_values)
     # print(min_values.shape)
     min_index[min_values >= self.params.distance_threshold] = -1
     # print(min_index)
@@ -79,12 +80,7 @@ class BKmedoids:
     return best_i, best_j
     
   def is_over(self):
-    velocity_time = 4
-    self.velocity =  self.history[-velocity_time:]
-    if len(self.velocity) == velocity_time:
-      self.velocity = [np.abs(self.velocity[i]-self.velocity[i-1]) for i in range(1,velocity_time)]
-    else: self.velocity = [np.inf]*velocity_time
-    return np.mean(self.velocity) < self.params.threshold or self.it >= self.params.max_it
+    return (len(self.history)>1 and self.history[-1] < self.params.threshold) or self.it >= self.params.max_it
       
   def run(self):
     
@@ -110,21 +106,6 @@ class BKmedoids:
         if len(valid) > 0:
             assigned_medoid = mode(valid, keepdims=False).mode
             self.medoids[int(assigned_medoid)].add_row(i)
-        # correlations = []
-        # for k,m in enumerate(self.medoids):
-        #   valid_cols = np.where(row == k)[0]
-        #   # print(len(valid_cols))
-        #   if (len(valid_cols)>2):
-        #     corr = abs(np.corrcoef(self.dataset[i,valid_cols], self.dataset[m.row,valid_cols])[0][1])
-        #     # print(corr)
-        #     correlations.append(corr)
-        # # print(i, len(correlations))
-        # if(len(correlations)>0):
-        #   print(np.argmax(correlations))
-        #   self.medoids[np.argmax(correlations)].add_row(i)
-        # else:
-          # assigned_medoid = mode(row[row!=-1], keepdims=False).mode
-          # self.medoids[int(assigned_medoid)].add_row(i)
               
       medoids_cols = [m.col for m in self.medoids]
       for j, col in enumerate(closest_medoid.T):
@@ -134,40 +115,37 @@ class BKmedoids:
         if len(valid) > 0:
             assigned_medoid = mode(valid, keepdims=False).mode
             self.medoids[int(assigned_medoid)].add_column(j)
-        
-        # correlations = []
-        # for k,m in enumerate(self.medoids):
-        #   valid_rows = np.where(col == k)[0]
-        #   # print(len(valid_rows))
-        #   if (len(valid_rows)>2):
-        #     corr = abs(np.corrcoef(self.dataset[valid_rows,j], self.dataset[valid_rows, m.col])[0])
-        #     correlations.append(corr)
-        # # print(j, len(correlations))
-        # if(len(correlations)>0):
-        #   self.medoids[np.argmax(correlations)].add_column(j)
-        # else:
-        #   assigned_medoid = mode(col[col!=-1], keepdims=False).mode
-        #   self.medoids[int(assigned_medoid)].add_column(j)
-              
+      
       # Remove outlier rows and columns
+      k=0
       for m in self.medoids:
         m.add(m.row, m.col)
+        # print(f"Medoid {k}")
+        k+=1
         m.remove_outliers(self.distance_func, self.params.distance_func_args, self.params.distance_threshold, self.params.outlier_threshold, self.dataset)
-        
+      
       # Update medoids
       for m in self.medoids:
         rows = m.bicluster["rows"]
         cols = m.bicluster["cols"]
 
         if len(rows) <= 1 or len(cols) <= 1 : 
-          occupied_rows = [m.row for m in self.medoids]
-          occupied_cols = [m.col for m in self.medoids]
+          # Exclude ALL rows belonging to other medoids
+          occupied_rows = [r for m in self.medoids for r in m.bicluster["rows"]]
+          occupied_cols = [c for m in self.medoids for c in m.bicluster["cols"]]
           free_rows = [i for i in range(self.dataset.shape[0]) if i not in occupied_rows]
           free_cols = [i for i in range(self.dataset.shape[1]) if i not in occupied_cols]
           
-          
-          random_row = self.rng.choice(free_rows)
-          random_col = self.rng.choice(free_cols)
+          try:
+            random_row = self.rng.choice(free_rows)
+            random_col = self.rng.choice(free_cols)
+          except(ValueError):
+            occupied_rows = [m.row for m in self.medoids]
+            occupied_cols = [m.col for m in self.medoids]
+            free_rows = [i for i in range(self.dataset.shape[0]) if i not in occupied_rows]
+            free_cols = [i for i in range(self.dataset.shape[1]) if i not in occupied_cols]
+            random_row = self.rng.choice(free_rows)
+            random_col = self.rng.choice(free_cols)
           updated_position = (random_row, random_col)
         else:
           bicluster = self.dataset[np.ix_(rows, cols)]
@@ -175,8 +153,8 @@ class BKmedoids:
           updated_position = rows[i], cols[j]
         
         m.update(updated_position)
-          
       self.history.append(self.evaluate_solution())
+
       self.it += 1
     self.history.append(self.evaluate_solution())
   
@@ -195,7 +173,7 @@ class BKmedoids:
             # if len(rows)>0:
             continue
           
-        score += acv(self.dataset[np.ix_(rows, cols)])
+        score += 1 - acv(self.dataset[np.ix_(rows, cols)])
 
         # ii, jj = np.meshgrid(rows, cols, indexing='ij')
 
@@ -219,4 +197,15 @@ class BKmedoids:
     return 1-(included_rows/self.dataset.shape[0]), 1-(included_cols/self.dataset.shape[1])
   
   def get_biclusters(self):
-    pass
+    rows = []
+    cols = []
+    for k, medoid in enumerate(self.medoids):
+      # if len(medoid.bicluster["rows"]) <= 2 or len(medoid.bicluster["cols"]) <= 2:
+      #   continue
+      row = np.zeros((self.dataset.shape[0],), dtype=bool)
+      row[medoid.bicluster["rows"]] = True
+      rows.append(row)
+      col = np.zeros((self.dataset.shape[1],), dtype=bool)
+      col[medoid.bicluster["cols"]] = True
+      cols.append(col)
+    return (np.array(rows), np.array(cols))

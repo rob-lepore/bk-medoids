@@ -50,6 +50,8 @@ class BicGen:
             
             prev_r, prev_c = 0, 0
             
+            rows = []
+            cols = []
             for bic_number, bic in meta["biclusters"].items():
                 m = bic["#rows"]
                 n = bic["#columns"]
@@ -70,14 +72,19 @@ class BicGen:
                 position_rows = list(range(prev_r,prev_r+m))
                 position_cols = list(range(prev_c,prev_c+n))
                 
+                row = np.zeros((M,), dtype=bool)
+                row[position_rows] = True
+                rows.append(row)
+                col = np.zeros((N,), dtype=bool)
+                col[position_cols] = True
+                cols.append(col)
+                
                 self.bics.append(((prev_r,prev_r+m), (prev_c, prev_c+n), pattern))
                 
                 data[np.ix_(position_rows, position_cols)] = b
                 prev_r += m
                 prev_c += n
-        return data
-    
-    def get_biclusters(self):
-        pass
+        return data, np.array(rows), np.array(cols)
+        
                 
         

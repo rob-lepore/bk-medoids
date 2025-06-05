@@ -1,4 +1,5 @@
-from utils import gene_standardization, bistandardisation
+from medoid import Medoid
+from utils import gene_standardization, bistandardisation, make_positive
 from graphics import show_biclusters, show_history, show_parallel_coordinates, show_biclusters_together, show_reordered
 import numpy as np
 import pandas as pd
@@ -18,32 +19,34 @@ def shuffle_matrix(data):
 
 
 def test_gs():
-    ds = BicGen(42).from_gbic("datasets/multiplicative_bics.json")     
-    # ds = ds + np.random.RandomState(42).normal(loc=0, scale=0.001, size=ds.shape)
+    ds, rows, columns = BicGen(42).from_gbic("datasets/additive_small_bics.json")     
+    ds = ds + np.random.RandomState(42).normal(loc=0, scale=0.1, size=ds.shape)
+    # ds = make_positive(ds)
     ds, row_idx, col_idx = shuffle_matrix(ds)
     # ds = gene_standardization(ds)
     
     config = {
-        "threshold": 1.e-3,
-        "max_it": 30,
-        "empty_penalty": 2,
+        "threshold": 0.0001,
+        "max_it": 300,
+        "empty_penalty": 5,
+        "distance_func_args": []
     }
     
     grid = {
-        "seed": list(range(4)),
-        "outlier_threshold": [0.6],
-        "distance_threshold": [1e-3],
-        "distance_func_args": [[]]
+        "seed": list(range(10)),
+        "outlier_threshold": [0.9],
+        "distance_threshold": [1e-5],
     }
     
     start = time.time()
     gs = GridSearch(config, grid)
-    scores, solutions = gs.search(ds, k=20)
+    scores, solutions = gs.search(ds, k=5)#,real=(rows[:,row_idx], columns[:,col_idx]))
     
     best = solutions[np.argmin(scores)]
     orphans = best.orphans()
     
-    print(f"\n\nExecution time: {time.time() - start:.2f} seconds. Score: {np.min(scores):.4f}. Iterations: {best.it}")
+    print(f"\n\nExecution time: {time.time() - start:.2f} seconds. Loss: {np.min(scores):.4f}. Iterations: {best.it}")
+    print(f"Consensus score: {consensus_score(best.get_biclusters(), (rows[:,row_idx], columns[:,col_idx]))}")
     print(f"Orphan rows: {100*orphans[0]:.2f}%. Orphan cols: {100*orphans[1]:.2f}%")
     print(f"Best solution: {best.params.__dict__}")
     show_history(best, "imgs/history.png")
@@ -85,8 +88,45 @@ def test():
     bk.medoids = bics
     show_parallel_coordinates(bk, "test_results.png")
 
+from sklearn.metrics import consensus_score
 
 if __name__ == "__main__":
     # test()
     test_gs()
+    
+    # gen = BicGen(42)
+    # ds, rows, columns = gen.from_gbic("datasets/multiplicative_bics.json") 
+    # ds, row_idx, col_idx = shuffle_matrix(ds)
+    
+    # config = {
+    #     "threshold": 1.e-3,
+    #     "max_it": 40,
+    #     "empty_penalty": 5,
+    #     "seed": 4,
+    #     "outlier_threshold": 0.9,
+    #     "distance_threshold": 1e-5,
+    #     "distance_func_args": []
+    # }
+
+    # bk = BKmedoids(ds, 2, config)
+    # bk.run()
+    # bics = bk.get_biclusters()
+    # print(bics[0].shape, bics[1].shape)
+    
+    # bics = []
+    # for bic in gen.bics:
+    #     start_r, end_r = bic[0]
+    #     start_c, end_c = bic[1]
+    #     position_rows = list(range(start_r,end_r))
+    #     position_cols = list(range(start_c,end_c))
+        
+    #     b = ds[np.ix_(position_rows, position_cols)]
+    #     m = Medoid([start_r,start_c])
+    #     m.bicluster["rows"] = position_rows
+    #     m.bicluster["cols"] = position_cols
+    #     bics.append(m)
+
+    # bk = BKmedoids(ds,0,{"seed":0})
+    # bk.medoids = bics
+    
     

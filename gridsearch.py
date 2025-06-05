@@ -1,3 +1,4 @@
+from sklearn.metrics import consensus_score
 from bkmedoids import BKmedoids
 from itertools import product
 import numpy as np
@@ -8,7 +9,7 @@ class GridSearch:
         self.config = config
         self.grid = grid
     
-    def search(self, dataset: np.ndarray, k: int):
+    def search(self, dataset: np.ndarray, k: int, real: tuple = None):
         scores = []
         solutions = []
         prod = list(product(*self.grid.values()))
@@ -29,10 +30,13 @@ class GridSearch:
             bk.run()
             ex_time = time.time() - start
             
-            scores.append(bk.evaluate_solution())
+            if real is None:
+                scores.append(bk.evaluate_solution())
+            else:
+                scores.append(1-consensus_score(bk.get_biclusters(), real))
             solutions.append(bk)    
             
-            print(f" -- Score: {scores[-1]:.4f}")
+            print(f" -- Loss: {scores[-1]:.4f}")
             print(f" -- Execution time: {ex_time:.3f} ({bk.it} iterations)")
         return scores, solutions
             

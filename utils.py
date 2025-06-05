@@ -90,7 +90,10 @@ def bistandardisation(X, max_iter=100, tol=1e-6):
         if np.linalg.norm(X - X_old) < tol:
             break
     return X
-        
+
+def make_positive(X):
+    m = X.min()
+    return X - m
 
 def variance_in_bicluster(bicluster, centroid_position):
     i_C, j_C = centroid_position
@@ -213,48 +216,116 @@ def linear_shift_vectorized(stacked):
     return np.abs(delta1-delta2)
 
 def linear_scale_vectorized(stacked):
-    delta1 = stacked[..., 1] / (stacked[..., 0]  + 1e-14)
-    delta2 = stacked[..., 3] / (stacked[..., 2]  + 1e-14)
+    eps = 1e-20
+    delta1 = stacked[..., 1] / (stacked[..., 0]  + eps)
+    delta2 = stacked[..., 3] / (stacked[..., 2]  + eps)
     return np.abs(delta1-delta2)
 
 def prova_scale_vectorized(stacked):
     eps = 1e-14
-    delta1 = np.log(np.abs(stacked[..., 1]) + eps) / np.log(np.abs(stacked[..., 0])  + eps)
-    delta2 = np.log(np.abs(stacked[..., 3]) + eps) / np.log(np.abs(stacked[..., 2])  + eps)
-    diff = np.abs(delta1-delta2)
-    return diff
+    ratio = (stacked[..., 0] * stacked[..., 3]) / (stacked[..., 1] * stacked[..., 2] + eps)
+    safe_ratio = np.clip(np.abs(ratio), eps, None)
+    return np.abs(np.log(safe_ratio))
+    
+    # 'seed': 2, 'outlier_threshold': 0.6, 'distance_threshold': 0.005
+    # num = (stacked[..., 0] * stacked[..., 3] - stacked[..., 1] * stacked[..., 2])**2
+    # den = stacked[..., 0]**2 * stacked[..., 3]**2 + stacked[..., 1]**2 * stacked[..., 2]**2 + eps
+    # return num / den
+    
+    # return np.abs(stacked[..., 0] * stacked[..., 3] - stacked[..., 1] * stacked[..., 2])
 
-def acv(bic: np.ndarray):
-    m,n = bic.shape
+# def acv(bic: np.ndarray):
+#     m,n = bic.shape
     
-    s = 0
-    for i1 in range(m):
-        for i2 in range(m):
-            s += abs(pearsonr(bic[i1,:], bic[i2,:]).statistic)
-    v1 = (s-m)/(m**2-m)
+#     s = 0
+#     for i1 in range(m):
+#         for i2 in range(m):
+#             if np.all(bic[i1,:] == bic[i1,0]) and np.all(bic[i2,:]==bic[i2,0]):
+#                 r = 1
+#             elif np.all(bic[i1,:] == bic[i1,0]) or np.all(bic[i2,:]==bic[i2,0]):
+#                 r = 0
+#             else:
+#                 r = pearsonr(bic[i1,:], bic[i2,:]).statistic
+#             # print(i1, i2, r)
+#             s += abs(r)
+#     v1 = (s-m)/(m**2-m)
     
-    s = 0
-    for j1 in range(n):
-        for j2 in range(n):
-            s += abs(pearsonr(bic[:,j1], bic[:,j2]).statistic)
-    v2 = (s-n)/(n**2-n)
-    return 1-max(v1,v2)
+#     s = 0
+#     for j1 in range(n):
+#         for j2 in range(n):
+#             if np.all(bic[:,j1] == bic[0,j1]) and np.all(bic[:,j2]==bic[0,j2]):
+#                 r = 1
+#             elif np.all(bic[:,j1] == bic[0,j1]) or np.all(bic[:,j2]==bic[0,j2]):
+#                 r = 0
+#             else:
+#                 r = pearsonr(bic[:,j1], bic[:,j2]).statistic
+                
+#             # print(j1,j2,r)
+#             s += abs(r)
+#     v2 = (s-n)/(n**2-n)
+#     return 1-max(v1,v2)
 
 # def acv(bic: np.ndarray) -> float:
-#     # Normalize rows and columns
-#     def norm_corrcoef(mat):
-#         mat = mat - np.mean(mat, axis=1, keepdims=True)
-#         mat = mat / np.std(mat, axis=1, ddof=0, keepdims=True)
-#         return np.corrcoef(mat)
-    
-#     # Row-wise correlations
-#     row_corr = np.abs(norm_corrcoef(bic))
-#     m = bic.shape[0]
-#     v1 = (np.sum(row_corr) - m) / (m**2 - m)
-    
-#     # Column-wise correlations
-#     col_corr = np.abs(norm_corrcoef(bic.T))
-#     n = bic.shape[1]
-#     v2 = (np.sum(col_corr) - n) / (n**2 - n)
-    
-#     return 1 - max(v1, v2)
+#     """
+#     Compute the average absolute Pearson correlation-based consistency metric for both rows and columns of bic array.
+#     Returns 1 minus the maximum of row-based and column-based consistency scores.
+#     """
+#     # Number of rows and columns
+#     m, n = bic.shape
+
+#     def consistency(matrix: np.ndarray) -> float:
+#         # Compute uniformity mask: True if all elements in a vector are identical
+#         uniform = np.isclose(matrix.std(axis=1), 0)
+#         # Compute pairwise Pearson correlations
+#         corr = np.corrcoef(matrix)
+#         # Handle constant vectors: nan for any pair involving at least one uniform vector
+#         # Both uniform: set correlation to 1; one uniform: set to 0
+#         both_const = np.outer(uniform, uniform)
+#         one_const = np.logical_xor.outer(uniform, uniform)
+
+#         # Replace nan entries
+#         corr = np.where(both_const, 1.0, corr)
+#         corr = np.where(one_const, 0.0, corr)
+#         # Other correlations remain as computed
+
+#         # Sum of absolute correlations, excluding self-correlations
+#         total = np.sum(np.abs(corr)) - matrix.shape[0]
+#         denom = matrix.shape[0]**2 - matrix.shape[0]
+#         return total / denom if denom > 0 else 0.0
+
+#     v1 = consistency(bic)
+#     v2 = consistency(bic.T)
+#     return 1.0 - max(v1, v2)
+
+def acv(bic: np.ndarray) -> float:
+    """
+    Compute the average absolute Pearson correlation-based consistency metric for both rows and columns of bic array.
+    Returns 1 minus the maximum of row-based and column-based consistency scores.
+    Avoids computing correlations for pairs involving constant vectors.
+    """
+    m, n = bic.shape
+
+    def consistency(matrix: np.ndarray) -> float:
+        stds = matrix.std(axis=1)
+        const_idx = np.where(np.isclose(stds, 0))[0]
+        size = matrix.shape[0]
+
+        corr = np.full((size, size), np.nan)
+
+        for i in range(size):
+            for j in range(i, size):
+                if i in const_idx and j in const_idx:
+                    r = 1.0
+                elif i in const_idx or j in const_idx:
+                    r = 0.0
+                else:
+                    r = np.corrcoef(matrix[i], matrix[j])[0, 1]
+                corr[i, j] = corr[j, i] = r
+
+        total = np.nansum(np.abs(corr)) - size  # remove self-correlation (diagonal = 1)
+        denom = size ** 2 - size
+        return total / denom if denom > 0 else 0.0
+
+    v1 = consistency(bic)
+    v2 = consistency(bic.T)
+    return max(v1, v2)

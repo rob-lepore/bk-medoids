@@ -1,4 +1,3 @@
-from matplotlib import pyplot as plt
 import numpy as np
 
 class Medoid:
@@ -83,4 +82,51 @@ class Medoid:
 
         if len(row_indices) == 0 and len(col_indices) == 0:
             break
+      
+  # def remove_outliers(self, distance_func, distance_func_args, distance_threshold, threshold_perc, dataset: np.ndarray):
+  #     print("start acv: ", acv(dataset[np.ix_( self.bicluster["rows"],self.bicluster["cols"])]))
+  #     for _ in range(1):
+  #       rows = self.bicluster["rows"]
+  #       cols = self.bicluster["cols"]
+        
+  #       if len(rows) <= 2 or len(cols) <= 2: break
+        
+  #       m_row = dataset[self.row, cols]
+  #       m_col = dataset[rows, self.col].flatten()
+        
+  #       bic = dataset[np.ix_(rows,cols)]
+        
+  #       # print(self.size(), " -> ", end="")
+        
+  #       is_m_row_const = np.isclose(np.std(m_row), 0)
+  #       to_remove_r = []
+  #       for i, row in enumerate(bic):
+  #         is_row_const = np.isclose(np.std(row), 0)
+  #         if is_row_const and is_m_row_const:
+  #             r = 1.0
+  #         elif is_row_const or is_m_row_const:
+  #             r = 0.0
+  #         else:
+  #             r = np.abs(np.corrcoef(row, m_row)[0, 1])
+  #         # print(f"{r:.3}", end=" ")
+  #         if (r < distance_threshold): to_remove_r.append(rows[i])
+
+  #       is_m_col_const = np.isclose(np.std(m_col), 0)
+  #       to_remove_c = []
+  #       for j, col in enumerate(bic.T):
+  #         is_col_const = np.isclose(np.std(col), 0)
+  #         if is_col_const and is_m_col_const:
+  #             r = 1.0
+  #         elif is_col_const or is_m_col_const:
+  #             r = 0.0
+  #         else:
+  #             r = np.abs(np.corrcoef(row, m_row)[0, 1])
+  #         if (r < distance_threshold): to_remove_c.append(cols[j])
+        
+  #       if len(to_remove_r) == 0 and len(to_remove_c) == 0: break
+        
+  #       self.bicluster["rows"] = [r for r in self.bicluster["rows"] if r not in to_remove_r]
+  #       self.bicluster["cols"] = [c for c in self.bicluster["cols"] if c not in to_remove_c]
+  #       # print(self.size())
+  #     print("end acv", acv(dataset[np.ix_(self.bicluster["rows"],self.bicluster["cols"])]))
       
