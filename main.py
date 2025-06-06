@@ -29,23 +29,24 @@ def test_gs():
         "threshold": 0.0001,
         "max_it": 300,
         "empty_penalty": 5,
-        "distance_func_args": []
+        "distance_func_args": [],
+        "distance_func": "shift"
     }
     
     grid = {
-        "seed": list(range(10)),
-        "outlier_threshold": [0.9],
-        "distance_threshold": [1e-5],
+        "seed": list(range(2)),
+        "outlier_threshold": [0.5],
+        "distance_threshold": [0.5],
     }
     
     start = time.time()
     gs = GridSearch(config, grid)
-    scores, solutions = gs.search(ds, k=5)#,real=(rows[:,row_idx], columns[:,col_idx]))
+    scores, solutions, times = gs.search(ds, k=5)#,real=(rows[:,row_idx], columns[:,col_idx]))
     
     best = solutions[np.argmin(scores)]
     orphans = best.orphans()
     
-    print(f"\n\nExecution time: {time.time() - start:.2f} seconds. Loss: {np.min(scores):.4f}. Iterations: {best.it}")
+    print(f"\n\nExecution time: {times[np.argmin(scores)]:.2f} seconds. Loss: {np.min(scores):.4f}. Iterations: {best.it}")
     print(f"Consensus score: {consensus_score(best.get_biclusters(), (rows[:,row_idx], columns[:,col_idx]))}")
     print(f"Orphan rows: {100*orphans[0]:.2f}%. Orphan cols: {100*orphans[1]:.2f}%")
     print(f"Best solution: {best.params.__dict__}")

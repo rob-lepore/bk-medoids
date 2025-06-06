@@ -12,6 +12,7 @@ class GridSearch:
     def search(self, dataset: np.ndarray, k: int, real: tuple = None):
         scores = []
         solutions = []
+        times = []
         prod = list(product(*self.grid.values()))
         
         for it, combination in enumerate(prod):
@@ -29,7 +30,7 @@ class GridSearch:
             start = time.time()
             bk.run()
             ex_time = time.time() - start
-            
+            times.append(ex_time)
             if real is None:
                 scores.append(bk.evaluate_solution())
             else:
@@ -38,5 +39,5 @@ class GridSearch:
             
             print(f" -- Loss: {scores[-1]:.4f}")
             print(f" -- Execution time: {ex_time:.3f} ({bk.it} iterations)")
-        return scores, solutions
+        return scores, solutions, times
             
