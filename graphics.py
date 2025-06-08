@@ -45,8 +45,8 @@ def show_history(bk, path=None):
     scores = [sol for sol in bk.history]
     fig = plt.figure()
     plt.title("History")
-    plt.ylabel("score")
-    plt.xlabel("iteration")
+    plt.ylabel("Loss")
+    plt.xlabel("Iteration")
     plt.plot(scores)
     ax = plt.gca()
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))  # Force integer ticks on x-axis
