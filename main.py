@@ -23,25 +23,24 @@ def test_gs():
     ds = ds + np.random.RandomState(42).normal(loc=0, scale=0.1, size=ds.shape)
     # ds = make_positive(ds)
     ds, row_idx, col_idx = shuffle_matrix(ds)
-    # ds = gene_standardization(ds)
+    ds = gene_standardization(ds)
     
     config = {
-        "threshold": 0.0001,
-        "max_it": 300,
+        "threshold": 0.001,
+        "max_it": 200,
         "empty_penalty": 5,
         "distance_func_args": [],
         "distance_func": "shift"
     }
     
     grid = {
-        "seed": list(range(2)),
+        "distance_threshold":  [0.5],
         "outlier_threshold": [0.5],
-        "distance_threshold": [0.5],
+        "seed": list(range(20)),
     }
     
-    start = time.time()
     gs = GridSearch(config, grid)
-    scores, solutions, times = gs.search(ds, k=5)#,real=(rows[:,row_idx], columns[:,col_idx]))
+    scores, solutions, times = gs.search(ds, k=5, p = 10)#,real=(rows[:,row_idx], columns[:,col_idx]))
     
     best = solutions[np.argmin(scores)]
     orphans = best.orphans()
