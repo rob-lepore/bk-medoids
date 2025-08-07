@@ -1,0 +1,11 @@
+{
+  "threshold": 0.01,
+  "max_it": 200,
+  "empty_penalty": 1,
+  "distance_func_args": [],
+  "distance_func": "shift",
+  "consensus_score": 0.7455357142857143,
+  "distance_threshold": 0.25,
+  "outlier_threshold": 0.65,
+  "seed": 0
+}

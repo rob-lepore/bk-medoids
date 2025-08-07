@@ -28,8 +28,8 @@ def show_reordered(bk, path=None):
 
     for r_start, c_start, r_len, c_len in bicluster_positions:
         rect = patches.Rectangle(
-            (c_start - 0.5, r_start - 0.5),  # x, y (adjust for pixel grid)
-            c_len, r_len,                   # width, height
+            (c_start - 0.5, r_start - 0.5), 
+            c_len, r_len,                  
             linewidth=2, edgecolor='red', facecolor='none'
         )
         ax.add_patch(rect)
@@ -49,7 +49,7 @@ def show_history(bk, path=None):
     plt.xlabel("Iteration")
     plt.plot(scores)
     ax = plt.gca()
-    ax.xaxis.set_major_locator(MaxNLocator(integer=True))  # Force integer ticks on x-axis
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))  
     if path is None:
         plt.show()
     else:
@@ -83,20 +83,16 @@ def show_biclusters_together(solution, path=None):
         columns = c.bicluster["cols"]
         m[np.ix_(rows, columns)] = idx+1
     
-    # Create a colormap: white for 0, then distinct colors for clusters
     num_clusters = len(solution.medoids)
     base_cmap = plt.get_cmap('tab20', num_clusters)
     colors = ['white'] + [base_cmap(i) for i in range(num_clusters)]
     cmap = ListedColormap(colors)
 
-    # Define boundaries to match 0, 1, ..., num_clusters
     boundaries = np.arange(-0.5, num_clusters + 1, 1)
     norm = BoundaryNorm(boundaries, cmap.N)
 
-    # Plot the matrix
     cax = ax.matshow(m, cmap=cmap, norm=norm)
 
-    # Add colorbar with ticks only for cluster IDs (exclude 0 if desired)
     cbar = fig.colorbar(cax, ax=ax, ticks=np.arange(1, num_clusters + 1))
     cbar.ax.set_ylabel('Cluster ID')
 
@@ -112,10 +108,9 @@ def show_parallel_coordinates(bk, path=None):
     medoids = [m for m in bk.medoids if len(m.bicluster["rows"])>2 and len(m.bicluster["cols"])>2]
     num_centroids = len(medoids)
 
-    # Create a figure with subplots
     fig, axes = plt.subplots(1, num_centroids, figsize=(num_centroids * 5, 5), sharey=True)
 
-    if num_centroids == 1:  # Ensure axes is iterable when only one subplot
+    if num_centroids == 1: 
         axes = [axes]
 
     for ax, c in zip(axes, medoids):
@@ -127,7 +122,7 @@ def show_parallel_coordinates(bk, path=None):
         if subset.shape[1] != len(columns):
             raise ValueError(f"Mismatch: subset has {subset.shape[1]} columns, but expected {len(columns)}.")
 
-        for i in range(len(rows)):  # Iterate properly over rows
+        for i in range(len(rows)): 
             ax.plot(range(len(columns)), subset[i, :], marker='o' if len(columns)==1 else '', linestyle='-', alpha=0.4)
         
         ax.plot(range(len(columns)), subset[rows.index(c.row), :], marker='', linestyle='--', alpha=1.0, color='red')
@@ -139,7 +134,6 @@ def show_parallel_coordinates(bk, path=None):
         ax.set_ylim(np.min(bk.dataset),np.max(bk.dataset))
         ax.grid(True)
 
-    # Set shared y-axis limits
     axes[0].set_ylabel('Value')
     axes[0].set_ylim(bk.dataset.min(), bk.dataset.max())
     

@@ -1,5 +1,7 @@
 import numpy as np
 
+from utils import acv
+
 class Medoid:
   def __init__(self, position: list):
     self.position = np.array(position)
@@ -59,17 +61,8 @@ class Medoid:
         Mj = cols.index(self.position[1])
                 
         m, n = bicluster.shape
-        
-        a = bicluster
-        b = np.tile(bicluster[:, Mj][:, np.newaxis], (1, n)) 
-        c = np.tile(bicluster[Mi, :][np.newaxis, :], (m, 1))  
-        d = np.full((m, n), bicluster[Mi, Mj])
-
-        stacked = np.stack([a, b, c, d], axis=-1) 
-        distances = distance_func(stacked, *distance_func_args)    
-
-        distances[Mi, :] = 0
-        distances[:, Mj] = 0
+           
+        distances = self.distances(bicluster,Mi, Mj, distance_func, distance_func_args)
         
         row_mask = (distances > distance_threshold).sum(axis=1) > threshold_perc * n
         col_mask = (distances > distance_threshold).sum(axis=0) > threshold_perc * m
@@ -82,51 +75,19 @@ class Medoid:
 
         if len(row_indices) == 0 and len(col_indices) == 0:
             break
-      
-  # def remove_outliers(self, distance_func, distance_func_args, distance_threshold, threshold_perc, dataset: np.ndarray):
-  #     print("start acv: ", acv(dataset[np.ix_( self.bicluster["rows"],self.bicluster["cols"])]))
-  #     for _ in range(1):
-  #       rows = self.bicluster["rows"]
-  #       cols = self.bicluster["cols"]
-        
-  #       if len(rows) <= 2 or len(cols) <= 2: break
-        
-  #       m_row = dataset[self.row, cols]
-  #       m_col = dataset[rows, self.col].flatten()
-        
-  #       bic = dataset[np.ix_(rows,cols)]
-        
-  #       # print(self.size(), " -> ", end="")
-        
-  #       is_m_row_const = np.isclose(np.std(m_row), 0)
-  #       to_remove_r = []
-  #       for i, row in enumerate(bic):
-  #         is_row_const = np.isclose(np.std(row), 0)
-  #         if is_row_const and is_m_row_const:
-  #             r = 1.0
-  #         elif is_row_const or is_m_row_const:
-  #             r = 0.0
-  #         else:
-  #             r = np.abs(np.corrcoef(row, m_row)[0, 1])
-  #         # print(f"{r:.3}", end=" ")
-  #         if (r < distance_threshold): to_remove_r.append(rows[i])
+          
+  
+  def distances(self, bic, Mi, Mj, distance_func, distance_func_args):
+      m, n = bic.shape
+          
+      a = bic
+      b = np.tile(bic[:, Mj][:, np.newaxis], (1, n)) 
+      c = np.tile(bic[Mi, :][np.newaxis, :], (m, 1))  
+      d = np.full((m, n), bic[Mi, Mj])
 
-  #       is_m_col_const = np.isclose(np.std(m_col), 0)
-  #       to_remove_c = []
-  #       for j, col in enumerate(bic.T):
-  #         is_col_const = np.isclose(np.std(col), 0)
-  #         if is_col_const and is_m_col_const:
-  #             r = 1.0
-  #         elif is_col_const or is_m_col_const:
-  #             r = 0.0
-  #         else:
-  #             r = np.abs(np.corrcoef(row, m_row)[0, 1])
-  #         if (r < distance_threshold): to_remove_c.append(cols[j])
-        
-  #       if len(to_remove_r) == 0 and len(to_remove_c) == 0: break
-        
-  #       self.bicluster["rows"] = [r for r in self.bicluster["rows"] if r not in to_remove_r]
-  #       self.bicluster["cols"] = [c for c in self.bicluster["cols"] if c not in to_remove_c]
-  #       # print(self.size())
-  #     print("end acv", acv(dataset[np.ix_(self.bicluster["rows"],self.bicluster["cols"])]))
+      stacked = np.stack([a, b, c, d], axis=-1) 
+      distances = distance_func(stacked, *distance_func_args) 
+      distances[Mi, :] = 0
+      distances[:, Mj] = 0
+      return distances
       

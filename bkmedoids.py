@@ -20,7 +20,7 @@ class BKmedoids:
     if self.params.distance_func == "shift":
       self.distance_func = linear_shift_vectorized
     elif self.params.distance_func == "scale":
-      self.distance_func = linear_scale_vectorized
+      self.distance_func = slog_ratio_vectorized
   
   def get_closest_medoid(self):
     N, M = self.dataset.shape
@@ -30,7 +30,8 @@ class BKmedoids:
     Mi = positions[:, 0]  
     Mj = positions[:, 1]  
 
-    a = self.dataset[np.newaxis, :, :]                    
+    a = self.dataset[np.newaxis, :, :]        
+                
     b = self.dataset[:, Mj]                               
     b = np.transpose(b, (1, 0))[:, :, np.newaxis]  
 
@@ -50,10 +51,8 @@ class BKmedoids:
 
     min_index = np.argmin(distances, axis=0)  
     min_values = np.min(distances, axis=0)  
-    # print(min_values)
-    # print(min_values.shape)
     min_index[min_values >= self.params.distance_threshold] = -1
-    # print(min_index)
+
     return min_index
   
   def find_medoid(self, ds: np.ndarray):
@@ -63,7 +62,6 @@ class BKmedoids:
 
     for i in range(N):
         for j in range(M):
-            # Prepare stacked tensor for current (i, j)
             a = ds
             b = np.tile(ds[:, j][:, np.newaxis], (1, M))
             c = np.tile(ds[i, :][np.newaxis, :], (N, 1))
@@ -105,8 +103,9 @@ class BKmedoids:
         valid = row[row != -1]
         if len(valid) > 0:
             assigned_medoid = mode(valid, keepdims=False).mode
+            eps = 1e-6
             self.medoids[int(assigned_medoid)].add_row(i)
-              
+
       medoids_cols = [m.col for m in self.medoids]
       for j, col in enumerate(closest_medoid.T):
         if j in medoids_cols:
@@ -117,11 +116,8 @@ class BKmedoids:
             self.medoids[int(assigned_medoid)].add_column(j)
       
       # Remove outlier rows and columns
-      k=0
       for m in self.medoids:
         m.add(m.row, m.col)
-        # print(f"Medoid {k}")
-        k+=1
         m.remove_outliers(self.distance_func, self.params.distance_func_args, self.params.distance_threshold, self.params.outlier_threshold, self.dataset)
       
       # Update medoids
@@ -129,6 +125,7 @@ class BKmedoids:
         rows = m.bicluster["rows"]
         cols = m.bicluster["cols"]
 
+        # Random assignment
         if len(rows) <= 1 or len(cols) <= 1 : 
           # Exclude ALL rows belonging to other medoids
           occupied_rows = [r for m in self.medoids for r in m.bicluster["rows"]]
@@ -160,48 +157,24 @@ class BKmedoids:
   
   
   def evaluate_solution(self):    
+    ''' Average ACV loss.'''
     score = 0.0
-    tot_size = 0
-    empties = 0
 
     for m in self.medoids:
         rows = np.asarray(m.bicluster["rows"])
         cols = np.asarray(m.bicluster["cols"])
 
         if len(rows) <= 2 or len(cols) <= 2:
-            empties += 1
-            # if len(rows)>0:
-            continue
-          
-        score += 1 - acv(self.dataset[np.ix_(rows, cols)])
+          score += 1
+        else:
+          score += 1 - acv(self.dataset[np.ix_(rows, cols)])
 
-        # ii, jj = np.meshgrid(rows, cols, indexing='ij')
-
-        # a = self.dataset[ii, jj]                          
-        # b = self.dataset[ii, m.col]                       
-        # c = self.dataset[m.row, jj]                       
-        # d = self.dataset[m.row, m.col] * np.ones_like(a) 
-
-        # stacked = np.stack([a, b, c, d], axis=-1)         
-        # dists = self.distance_func(stacked, *self.params.distance_func_args)                  
-
-        # score += np.sum(dists) * m.size()
-        # tot_size += m.size()
-
-    return score + empties*self.params.empty_penalty# (score / tot_size) + empties*self.params.empty_penalty if tot_size > 0 else np.inf
-  
-  
-  def orphans(self):
-    included_rows = len([r for m in self.medoids for r in m.bicluster["rows"]])
-    included_cols = len([c for m in self.medoids for c in m.bicluster["cols"]])
-    return 1-(included_rows/self.dataset.shape[0]), 1-(included_cols/self.dataset.shape[1])
+    return score / len(self.medoids)
   
   def get_biclusters(self):
     rows = []
     cols = []
     for k, medoid in enumerate(self.medoids):
-      # if len(medoid.bicluster["rows"]) <= 2 or len(medoid.bicluster["cols"]) <= 2:
-      #   continue
       row = np.zeros((self.dataset.shape[0],), dtype=bool)
       row[medoid.bicluster["rows"]] = True
       rows.append(row)

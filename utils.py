@@ -1,9 +1,7 @@
 import numpy as np
 import json
-from itertools import product
 from scipy.linalg import norm
 from scipy.sparse import dia_matrix, issparse
-from scipy.stats import pearsonr
 
 class Config:
   """Configuration class that contains train and model hyperparameters"""
@@ -100,10 +98,10 @@ def variance_in_bicluster(bicluster, centroid_position):
     
     m, n = bicluster.shape 
 
-    V1 = bicluster  # Original matrix (m, n)
-    V2 = np.broadcast_to(bicluster[:, j_C][:, None], (m, n))  # Column of centroid
-    V3 = np.broadcast_to(bicluster[i_C, :][None, :], (m, n))  # Row of centroid
-    V4 = np.full((m, n), bicluster[i_C, j_C])  # Single centroid value expanded
+    V1 = bicluster 
+    V2 = np.broadcast_to(bicluster[:, j_C][:, None], (m, n))
+    V3 = np.broadcast_to(bicluster[i_C, :][None, :], (m, n)) 
+    V4 = np.full((m, n), bicluster[i_C, j_C]) 
 
     V = np.stack([V1, V2, V3, V4], axis=-1)
     total_variance = np.sum(np.var(V, axis=-1, ddof=0))
@@ -121,7 +119,7 @@ def global_variance(bk):
             total_var += 0
         else:
             b_var = variance_in_bicluster(bicluster, (rows.index(c.row), columns.index(c.col)))
-            total_var += b_var * bicluster.size  # Weighted by number of elements
+            total_var += b_var * bicluster.size  
         total_size += bicluster.size
     return total_var/total_size
 
@@ -129,11 +127,11 @@ def global_mean_squared_residue(bk):
     
     def mean_squared_residue(matrix):
         if matrix.size <= 1:
-            return 1  # Handle empty biclusters safely
+            return 1 
         
-        row_means = matrix.mean(axis=1, keepdims=True)  # Mean of each row
-        col_means = matrix.mean(axis=0, keepdims=True)  # Mean of each column
-        overall_mean = matrix.mean()  # Global mean of the bicluster
+        row_means = matrix.mean(axis=1, keepdims=True)  
+        col_means = matrix.mean(axis=0, keepdims=True)  
+        overall_mean = matrix.mean()  
 
         residue_matrix = matrix - row_means - col_means + overall_mean
         msr = np.mean(residue_matrix**2)
@@ -151,13 +149,12 @@ def global_mean_squared_residue(bk):
         columns = c.bicluster["cols"]
         bicluster = bk.dataset[np.ix_(rows, columns)]
         msr = mean_squared_residue(bicluster)
-        total_msr += msr * bicluster.size  # Weighted by number of elements
+        total_msr += msr * bicluster.size  
         total_size += bicluster.size
     
     penalty_factor = 1
     if empty_count > 0:
         empty_fraction = empty_count / bk.k
-        # Apply stronger penalty using an exponent
         penalty_factor = (1 - empty_fraction) ** 3
         
     gmsr = total_msr / total_size if total_size > 0 else 0
@@ -175,128 +172,38 @@ def gene_standardization(X, only_pos = False):
 def var_distance_vectorized(stacked):
     return np.var(stacked, axis=-1)
 
-def exp_shift_vectorized(stacked, a):
-    delta1 = stacked[..., 1] - stacked[..., 0]  
-    delta2 = stacked[..., 3] - stacked[..., 2]  
-    diff = delta1-delta2
-    return 1-np.exp(-np.abs(diff)/a)
-
-def exp_scale_vectorized(stacked, a):
-    delta1 = stacked[..., 1] / (stacked[..., 0]  + 1e-14)
-    delta2 = stacked[..., 3] / (stacked[..., 2]  + 1e-14)
-    # with log-ratio?
-    diff = delta1-delta2
-    return 1-np.exp(-np.abs(diff)/a)
-
-def exp_combined_vectorized(stacked,a):
-    shift = exp_shift_vectorized(stacked, a)
-    scale = exp_scale_vectorized(stacked, a)
-    return np.minimum(shift, scale)
-
-def sigmoid_shift_vectorized(stacked, midpoint, steepness=20.0):
-    delta1 = stacked[..., 1] - stacked[..., 0]  
-    delta2 = stacked[..., 3] - stacked[..., 2]  
-    diff = np.abs(delta1-delta2)
-    return 1 / (1 + np.exp(-steepness * (diff - midpoint)))
-
-def sigmoid_scale_vectorized(stacked, midpoint, steepness=20.0):
-    delta1 = stacked[..., 1] / (stacked[..., 0]  + 1e-14)
-    delta2 = stacked[..., 3] / (stacked[..., 2]  + 1e-14) 
-    diff = np.abs(delta1-delta2)
-    return 1 / (1 + np.exp(-steepness * (diff - midpoint)))
-
-def sigmoid_combined_vectorized(stacked, mid1, mid2):
-    shift = sigmoid_shift_vectorized(stacked, mid1)
-    scale = sigmoid_scale_vectorized(stacked, mid2)
-    return np.minimum(shift, scale)
-
 def linear_shift_vectorized(stacked):
     delta1 = stacked[..., 1] - stacked[..., 0]  
     delta2 = stacked[..., 3] - stacked[..., 2]  
     return np.abs(delta1-delta2)
 
 def linear_scale_vectorized(stacked):
-    eps = 1e-20
-    delta1 = stacked[..., 1] / (stacked[..., 0]  + eps)
-    delta2 = stacked[..., 3] / (stacked[..., 2]  + eps)
+    delta1 = stacked[..., 0] * stacked[..., 3]  
+    delta2 = stacked[..., 1] * stacked[..., 2]  
     return np.abs(delta1-delta2)
 
-def prova_scale_vectorized(stacked):
-    eps = 1e-14
-    ratio = (stacked[..., 0] * stacked[..., 3]) / (stacked[..., 1] * stacked[..., 2] + eps)
-    safe_ratio = np.clip(np.abs(ratio), eps, None)
-    return np.abs(np.log(safe_ratio))
+def slog_vectorized(stacked):
+    def slog(x, eps=1e-20):
+        return np.sign(x)*np.log(np.abs(x)+eps)
+        
+    delta1 = slog(stacked[..., 1]) - slog(stacked[..., 0])
+    delta2 = slog(stacked[..., 3]) - slog(stacked[..., 2])
+    return np.abs(delta1-delta2)
+
+def slog_ratio_vectorized(stacked):
+    eps = 1e-20
+    a = stacked[..., 0]
+    b = stacked[..., 1]
+    c = stacked[..., 2]
+    d = stacked[..., 3]
+    s1 = np.sign(a*b)
+    s2 = np.sign(c*d)
     
-    # 'seed': 2, 'outlier_threshold': 0.6, 'distance_threshold': 0.005
-    # num = (stacked[..., 0] * stacked[..., 3] - stacked[..., 1] * stacked[..., 2])**2
-    # den = stacked[..., 0]**2 * stacked[..., 3]**2 + stacked[..., 1]**2 * stacked[..., 2]**2 + eps
-    # return num / den
+    delta1 = s1 * (np.log(np.abs(b)+eps) - np.log(np.abs(a)+eps))
+    delta2 = s2 * (np.log(np.abs(d)+eps) - np.log(np.abs(c)+eps))
+    return np.abs(delta1-delta2)
+
     
-    # return np.abs(stacked[..., 0] * stacked[..., 3] - stacked[..., 1] * stacked[..., 2])
-
-# def acv(bic: np.ndarray):
-#     m,n = bic.shape
-    
-#     s = 0
-#     for i1 in range(m):
-#         for i2 in range(m):
-#             if np.all(bic[i1,:] == bic[i1,0]) and np.all(bic[i2,:]==bic[i2,0]):
-#                 r = 1
-#             elif np.all(bic[i1,:] == bic[i1,0]) or np.all(bic[i2,:]==bic[i2,0]):
-#                 r = 0
-#             else:
-#                 r = pearsonr(bic[i1,:], bic[i2,:]).statistic
-#             # print(i1, i2, r)
-#             s += abs(r)
-#     v1 = (s-m)/(m**2-m)
-    
-#     s = 0
-#     for j1 in range(n):
-#         for j2 in range(n):
-#             if np.all(bic[:,j1] == bic[0,j1]) and np.all(bic[:,j2]==bic[0,j2]):
-#                 r = 1
-#             elif np.all(bic[:,j1] == bic[0,j1]) or np.all(bic[:,j2]==bic[0,j2]):
-#                 r = 0
-#             else:
-#                 r = pearsonr(bic[:,j1], bic[:,j2]).statistic
-                
-#             # print(j1,j2,r)
-#             s += abs(r)
-#     v2 = (s-n)/(n**2-n)
-#     return 1-max(v1,v2)
-
-# def acv(bic: np.ndarray) -> float:
-#     """
-#     Compute the average absolute Pearson correlation-based consistency metric for both rows and columns of bic array.
-#     Returns 1 minus the maximum of row-based and column-based consistency scores.
-#     """
-#     # Number of rows and columns
-#     m, n = bic.shape
-
-#     def consistency(matrix: np.ndarray) -> float:
-#         # Compute uniformity mask: True if all elements in a vector are identical
-#         uniform = np.isclose(matrix.std(axis=1), 0)
-#         # Compute pairwise Pearson correlations
-#         corr = np.corrcoef(matrix)
-#         # Handle constant vectors: nan for any pair involving at least one uniform vector
-#         # Both uniform: set correlation to 1; one uniform: set to 0
-#         both_const = np.outer(uniform, uniform)
-#         one_const = np.logical_xor.outer(uniform, uniform)
-
-#         # Replace nan entries
-#         corr = np.where(both_const, 1.0, corr)
-#         corr = np.where(one_const, 0.0, corr)
-#         # Other correlations remain as computed
-
-#         # Sum of absolute correlations, excluding self-correlations
-#         total = np.sum(np.abs(corr)) - matrix.shape[0]
-#         denom = matrix.shape[0]**2 - matrix.shape[0]
-#         return total / denom if denom > 0 else 0.0
-
-#     v1 = consistency(bic)
-#     v2 = consistency(bic.T)
-#     return 1.0 - max(v1, v2)
-
 def acv(bic: np.ndarray) -> float:
     """
     Compute the average absolute Pearson correlation-based consistency metric for both rows and columns of bic array.
@@ -322,10 +229,39 @@ def acv(bic: np.ndarray) -> float:
                     r = np.corrcoef(matrix[i], matrix[j])[0, 1]
                 corr[i, j] = corr[j, i] = r
 
-        total = np.nansum(np.abs(corr)) - size  # remove self-correlation (diagonal = 1)
+        total = np.nansum(np.abs(corr)) - size 
         denom = size ** 2 - size
         return total / denom if denom > 0 else 0.0
 
     v1 = consistency(bic)
     v2 = consistency(bic.T)
     return max(v1, v2)
+
+def jaccard_list(a, b):
+    """Jaccard index between two index lists."""
+    a, b = set(a), set(b)
+    inter = len(a & b)
+    union = len(a | b)
+    return inter / union if union > 0 else 0
+
+def match_score(rows1, cols1, rows2, cols2):
+    """Compute the product of row and column Jaccard indices."""
+    r_score = jaccard_list(np.where(rows1)[0], np.where(rows2)[0])
+    c_score = jaccard_list(np.where(cols1)[0], np.where(cols2)[0])
+    return r_score * c_score
+
+def recovery_score(pred, true):
+    pred_rows, pred_cols = pred
+    true_rows, true_cols = true
+    return np.mean([
+        max([match_score(tr, tc, pr, pc) for pr, pc in zip(pred_rows, pred_cols)] or [0])
+        for tr, tc in zip(true_rows, true_cols)
+    ])
+
+def relevance_score(pred, true):
+    pred_rows, pred_cols = pred
+    true_rows, true_cols = true
+    return np.mean([
+        max([match_score(pr, pc, tr, tc) for tr, tc in zip(true_rows, true_cols)] or [0])
+        for pr, pc in zip(pred_rows, pred_cols)
+    ]) 
