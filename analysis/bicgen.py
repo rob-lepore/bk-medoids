@@ -20,9 +20,9 @@ class BicGen:
             return np.full((m,n),seed) * row_coeff * col_coeff
         elif coherence == "constant-constant":
             return np.full((m,n),seed)
-        elif coherence == "none-constant":
-            return np.full((m,n), 1) * row_coeff
-        elif coherence == "constant-none":
+        elif coherence == "none-constant": # row constant
+            return np.full((m,n), 1) * np.array(row_coeff).reshape((m,1))
+        elif coherence == "constant-none": # column constant
             return np.full((m,n), 1) * col_coeff
         elif coherence == "constant-additive":
             row_coeff = np.zeros((m,1))
@@ -44,11 +44,9 @@ class BicGen:
             meta = json.load(file)
             M = meta["#DatasetRows"]
             N = meta["#DatasetColumns"]
-            min_val = meta["#DatasetMinValue"]
-            max_val = meta["#DatasetMaxValue"]
             
-            data = self.rng.random((M,N)) * (max_val - min_val) + min_val
-            
+            data = self.rng.standard_normal((M,N))
+
             prev_r, prev_c = 0, 0
             
             rows = []
@@ -64,6 +62,14 @@ class BicGen:
                     seed = float(bic["Data"][0][0])
                     row_coeff = None
                     col_coeff = None
+                elif pattern == "constant-none": # column constant bicluster
+                    row_coeff = None
+                    col_coeff = [float(n) for n in bic["Data"][0]]
+                    seed = None
+                elif pattern == "none-constant": # row constant bicluster
+                    col_coeff = None
+                    seed = None
+                    row_coeff = [float(r[0]) for r in bic["Data"]] 
                 else:
                     row_coeff = [float(n) for n in bic["RowFactors"][1:-1].split(",")]
                     col_coeff = [float(n) for n in bic["ColumnFactors"][1:-1].split(",")]
@@ -73,6 +79,7 @@ class BicGen:
                     break 
                 
                 b = self.generate_bicluster(pattern, m, n, seed, row_coeff, col_coeff )
+                b += self.rng.normal(loc=0, scale=self.noise, size=b.shape)
                 
                 position_rows = list(range(prev_r, prev_r + m))
                 position_cols = list(range(prev_c, prev_c + n))
@@ -99,10 +106,7 @@ class BicGen:
                 rows.append(row)
                 col = np.zeros((N,), dtype=bool)
                 col[position_cols] = True
-                cols.append(col)
-        
-        if self.noise > 0:
-            data += self.rng.normal(loc=0, scale=self.noise, size=data.shape)
+                cols.append(col)            
 
         return data, np.array(rows), np.array(cols), patterns
         

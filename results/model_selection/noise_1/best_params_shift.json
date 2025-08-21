@@ -4,8 +4,9 @@
   "empty_penalty": 1,
   "distance_func_args": [],
   "distance_func": "shift",
-  "consensus_score": 0.7455357142857143,
-  "distance_threshold": 0.25,
-  "outlier_threshold": 0.65,
+  "consensus_score": 0.9434523809523809,
+  "pattern": "col_const",
+  "distance_threshold": 0.04,
+  "outlier_threshold": 0.7,
   "seed": 0
 }

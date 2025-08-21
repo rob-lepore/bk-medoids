@@ -3,3 +3,8 @@ prova.ipynb
 visuals.ipynb
 __pycache__/
 prova.py
+datasets/
+gbic_output/
+ARBic_data/
+real_datasets/
+results

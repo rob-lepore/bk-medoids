@@ -123,12 +123,12 @@ def show_parallel_coordinates(bk, path=None):
             raise ValueError(f"Mismatch: subset has {subset.shape[1]} columns, but expected {len(columns)}.")
 
         for i in range(len(rows)): 
-            ax.plot(range(len(columns)), subset[i, :], marker='o' if len(columns)==1 else '', linestyle='-', alpha=0.4)
+            ax.plot(range(len(columns)), subset[i, :], marker='o' if len(columns)==1 else '', linestyle='-', alpha=0.3)
         
         ax.plot(range(len(columns)), subset[rows.index(c.row), :], marker='', linestyle='--', alpha=1.0, color='red')
         ax.plot([columns.index(c.col)], subset[rows.index(c.row), columns.index(c.col)], marker='x', color='red')
 
-        ax.set_xlabel('Column Index')
+        ax.set_xlabel('Condition')
         ax.set_title(f'Bicluster {bk.medoids.index(c)} ({len(c.bicluster["rows"])}x{len(c.bicluster["cols"])}, ACV={acv(subset):.3f})')
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         ax.set_ylim(np.min(bk.dataset),np.max(bk.dataset))
@@ -142,4 +142,5 @@ def show_parallel_coordinates(bk, path=None):
     if path is None:
         plt.show()
     else:
-        fig.savefig(path)
+        # fig.savefig(path)
+        fig.savefig(path, format="pdf", bbox_inches="tight")

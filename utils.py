@@ -191,7 +191,6 @@ def slog_vectorized(stacked):
     return np.abs(delta1-delta2)
 
 def slog_ratio_vectorized(stacked):
-    eps = 1e-20
     a = stacked[..., 0]
     b = stacked[..., 1]
     c = stacked[..., 2]
@@ -199,8 +198,8 @@ def slog_ratio_vectorized(stacked):
     s1 = np.sign(a*b)
     s2 = np.sign(c*d)
     
-    delta1 = s1 * (np.log(np.abs(b)+eps) - np.log(np.abs(a)+eps))
-    delta2 = s2 * (np.log(np.abs(d)+eps) - np.log(np.abs(c)+eps))
+    delta1 = s1 * (np.log(np.abs(b/a)+1))
+    delta2 = s2 * (np.log(np.abs(d/c)+1))
     return np.abs(delta1-delta2)
 
     
