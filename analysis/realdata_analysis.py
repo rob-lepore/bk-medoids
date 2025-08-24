@@ -7,14 +7,16 @@ from graphics import *
 import json
 import joblib
 
-with open("results/real_data/yeast.json") as f:
+spec = "yeast"
+
+with open(f"results/real_data/{spec}.json") as f:
     bics = json.load(f)
     
 rows = bics["rows"]
 cols = bics["cols"]
 
-go_dict = joblib.load("real_datasets/data/yeast_dream5/gsets/go_resaved.pkl")
-kegg_dict = joblib.load("real_datasets/data/yeast_dream5/gsets/kegg_resaved.pkl")
+go_dict = pd.read_csv(f"real_datasets/data/{spec}_dream5/gsets/go_filtered.tsv", sep="\t", header=0, index_col=0)
+kegg_dict = pd.read_csv(f"real_datasets/data/{spec}_dream5/gsets/kegg_filtered.tsv", sep="\t", header=0, index_col=0)
 
 
 # Assume go_dict is your DataFrame (genes x GO terms, bool)
@@ -24,7 +26,7 @@ import pandas as pd
 from scipy.stats import fisher_exact
 import statsmodels.stats.multitest as smm
 
-def enrichment_results(gene_list, go_df, kegg_df=None, fdr_threshold=0.05):
+def enrichment_results(gene_list, go_df, kegg_df, fdr_threshold=0.05):
     """
     gene_list: list of gene IDs (must match the index of go_df / kegg_df)
     go_df: DataFrame of bool (genes x GO terms)
@@ -47,11 +49,13 @@ def enrichment_results(gene_list, go_df, kegg_df=None, fdr_threshold=0.05):
         table = [[k, n - k],
                  [K - k, N - K - (n - k)]]
         _, pval = fisher_exact(table, alternative='greater')
-        results.append({'GO_term': go_term, 'k': k, 'K': K, 'pval': pval})
+        
+        fold_enr = (k/len(genes_in_list)) / (K/len(all_genes))
+        results.append({'GO_term': go_term, 'k': k, 'K': K, 'pval': pval, "fold": fold_enr})
     
     go_res = pd.DataFrame(results)
     go_res['FDR'] = smm.multipletests(go_res['pval'], method='fdr_bh')[1]
-    go_res = go_res[go_res['FDR'] <= fdr_threshold].sort_values('FDR')
+    go_res = go_res[go_res['FDR'] <= fdr_threshold].sort_values('fold', ascending=False)
     
     print("=== GO Enrichment ===")
     if go_res.empty:
@@ -59,7 +63,7 @@ def enrichment_results(gene_list, go_df, kegg_df=None, fdr_threshold=0.05):
     else:
         print(go_res)
     
-    # --- KEGG enrichment (optional) ---
+    # --- KEGG enrichment ---
     if kegg_df is not None:
         kegg_results = []
         for pathway in kegg_df.columns:
@@ -72,11 +76,12 @@ def enrichment_results(gene_list, go_df, kegg_df=None, fdr_threshold=0.05):
             table = [[k, n - k],
                      [K - k, N - K - (n - k)]]
             _, pval = fisher_exact(table, alternative='greater')
-            kegg_results.append({'KEGG_pathway': pathway, 'k': k, 'K': K, 'pval': pval})
+            fold_enr = (k/len(genes_in_list)) / (K/len(all_genes))
+            kegg_results.append({'KEGG_pathway': pathway, 'k': k, 'K': K, 'pval': pval, 'fold': fold_enr})
         
         kegg_res = pd.DataFrame(kegg_results)
         kegg_res['FDR'] = smm.multipletests(kegg_res['pval'], method='fdr_bh')[1]
-        kegg_res = kegg_res[kegg_res['FDR'] <= fdr_threshold].sort_values('FDR')
+        kegg_res = kegg_res[kegg_res['FDR'] <= fdr_threshold].sort_values('fold', ascending=False)
         
         print("\n=== KEGG Enrichment ===")
         if kegg_res.empty:
